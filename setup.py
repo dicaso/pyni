@@ -14,8 +14,10 @@ setup(name = package,
       install_requires = [
           'matplotlib',
           'pandas',
+          'scipy',
           'requests',
-          'networkx'
+          'networkx',
+          'biomart'
       ],
       package_data = {
           'ninklings': [
