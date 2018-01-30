@@ -8,7 +8,7 @@ from io import  StringIO
 import os
 
 # Set matplotlib to interactive mode when executed from interactive shell
-if os.sys.ps1: plt.ion()
+if 'ps1' in vars(os.sys): plt.ion()
 
 # Package data
 pkgdatadir = '{}/../data/%s'.format(os.path.dirname(__file__)) #TODO change to subdir ninklings when making public
@@ -70,7 +70,7 @@ class Netwink():
         # TODO hoe gaan we daarmee om
         self.networkFile = os.path.join(self.location, 'reactome_FI_filteredEdges.tsv')
         if os.path.exists(self.networkFile):
-            self.annotation = pd.read_table(self.networkFile)
+            self.networkgenes = pd.read_table(self.networkFile)
         else:
             networktable = pd.read_table(os.path.expanduser(pkgdatadir % 'reactome_FI.txt'))
             networktable = networktable[networktable.Gene1.isin(self.annotation['Gene name'])]
