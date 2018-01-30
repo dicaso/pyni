@@ -10,6 +10,9 @@ import os
 # Set matplotlib to interactive mode when executed from interactive shell
 if os.sys.ps1: plt.ion()
 
+# Package data
+pkgdatadir = '{}/../data/%s'.format(os.path.dirname(__file__)) #TODO change to subdir ninklings when making public
+
 ## Biomart
 def get_biomart(atts=None):
     """
@@ -69,7 +72,7 @@ class Netwink():
         if os.path.exists(self.networkFile):
             self.annotation = pd.read_table(self.networkFile)
         else:
-            networktable = pd.read_table(os.path.expanduser('~/Dropbiz/Personal/Tools/ninklings/data/reactome_FI.txt'))
+            networktable = pd.read_table(os.path.expanduser(pkgdatadir % 'reactome_FI.txt'))
             networktable = networktable[networktable.Gene1.isin(self.annotation['Gene name'])]
             networktable = networktable[networktable.Gene2.isin(self.annotation['Gene name'])]
             networktable = networktable[networktable.Score >= .75]
@@ -81,7 +84,7 @@ class Netwink():
         self.networkgenes.T.apply(lambda x: self.graph.add_edge(x['Gene1'],x['Gene2']))
         if cosmicOnly:
             cosmicgenes = set(pd.read_table(
-                os.path.expanduser('/Users/cvneste/Dropbiz/Personal/Tools/ninklings/data/cosmic_20180125.tsv')
+                os.path.expanduser(pkgdatadir % 'cosmic_20180125.tsv')
             )['Gene Symbol'])
             self.graph = self.graph.subgraph(cosmicgenes)
             components = {
