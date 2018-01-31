@@ -4,6 +4,7 @@ Network ink enrichment stats
 ## Get started
 
    git clone https://github.ugent.be/cvneste/ninklings.git && cd ninklings
+   git checkout -b $USER
    mkvirtualenv ninklings
    pip install -e .     # installs package linked to the git repo
    python setup.py test # runs all the tests
