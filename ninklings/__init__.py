@@ -107,7 +107,7 @@ class Kernel():
         self.netwink = netwink
 
     def __repr__(self):
-        if 'computedMatrix' in vars(k):
+        if 'computedMatrix' in vars(self):
             return self.computedMatrix.__repr__()
 
     def compute(self):
