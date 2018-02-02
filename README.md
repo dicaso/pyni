@@ -26,6 +26,7 @@ Network ink enrichment stats
 
 ## Working on the documentation
 
-   pip install ninklings[documentation]
-   #sphinx-quickstart #was used for initiating the documentation
+    pip install ninklings[documentation]
+    #sphinx-quickstart #was used for initiating the documentation
+    
    

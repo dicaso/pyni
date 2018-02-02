@@ -18,3 +18,8 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+Module documentation
+====================
+.. automodule:: ninklings
+   :members:
