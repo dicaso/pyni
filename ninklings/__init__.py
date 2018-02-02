@@ -1,11 +1,12 @@
 #/usr/bin/env python3
 import networkx as nx
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.linalg import expm
 import pandas as pd
 from io import  StringIO
-import os
+import os, logging, random, shelve
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Set matplotlib to interactive mode when executed from interactive shell
 if 'ps1' in vars(os.sys): plt.ion()
@@ -37,18 +38,37 @@ class Netwink():
     Does the setup for all down stream network analyses
     """
 
-    def __init__(self,savedir,name=None,cosmicOnly=True,fullInit=True):
+    def __init__(self,savedir,name=None,loglevel='DEBUG',cosmicOnly=True,fullInit=True):
         self.location = savedir
         self.name = name if name else os.path.basename(savedir)
+        self.logger = logging.Logger(self.name,level=loglevel)
+        self.shelve = shelve.open(os.path.join(self.location,'distrostore'))
         if fullInit:
             self.check_location()
+            self.setup_logging(loglevel)
             self.set_annotation()
             self.load_network(cosmicOnly)
+            self.logger.debug('%s fully created',self)
+        else: self.logger.warning('%s created but no network loaded',self)
+
+    def __del__(self):
+        self.shelve.close()
+
+    def __repr__(self):
+        return '<Netwink object: {}>'.format(self.name)
 
     def check_location(self):
         if not os.path.exists(self.location):
             os.mkdir(self.location)
-    
+
+    def setup_logging(self,level='DEBUG'):
+        stdout = logging.StreamHandler(stream=os.sys.stdout)
+        stdout.setLevel(level)
+        logfile = logging.FileHandler(os.path.join(self.location,self.name+'.log'))
+        logfile.setLevel(level)
+        self.logger.addHandler(stdout)
+        self.logger.addHandler(logfile)
+        
     def set_annotation(self):
         self.annotationFile = os.path.join(self.location, 'ensembl_annotation.tsv')
         if os.path.exists(self.annotationFile):
@@ -65,9 +85,9 @@ class Netwink():
             self.annotation.to_csv(self.annotationFile,sep='\t')
 
     def load_network(self,cosmicOnly=False):
-        # als complex netwerk -> complex als entiteit meenemen?
-        # voor brute analyze best niet
-        # TODO hoe gaan we daarmee om
+        # if complexes in network -> condir complex as its own entity?
+        # for brute force analysis best not
+        # TODO how are we going to deal with it?
         self.networkFile = os.path.join(self.location, 'reactome_FI_filteredEdges.tsv')
         if os.path.exists(self.networkFile):
             self.networkgenes = pd.read_table(self.networkFile)
@@ -95,11 +115,58 @@ class Netwink():
         self.admatrix = nx.adjacency_matrix(self.graph).todense()
         self.admatrix = self.admatrix.astype(np.float32)
 
+    def get_nodes_series(self):
+        return pd.Series(self.graph.nodes)
+
     def export_admatrix(self):
         self.admatrix.tofile(os.path.join(self.location,'admatrix.tsv'), sep='\t')
 
     def plot_admatrix(self):
         plt.matshow(self.admatrix)
+
+    def apply_gene_scores(self,genescores,fillna=0):
+        """
+        Apply gene scores to the adjacency matrix. 
+        Genescores should be dict with as keys the node names.
+        When a node/gene is not in genescores it gets a score of `fillna`
+
+        In the returned matrix, each gene connected to the row's gene
+        gets the score of that gene. The returned matrix is not symmetrical.
+        """
+        scoresDiag = np.matrix(np.diag(
+            self.get_nodes_series().map(genescores).fillna(fillna).astype(np.float32).as_matrix()
+        ))
+        self.scoresMatrix = scoresDiag * np.matrix(self.admatrix)
+        
+    
+    def subset_adjmatrix(self,geneset,externalEdges=False):
+        """
+        For a given set of genes, returns the original adjancency matrix
+        with 1 indicating edges within the geneset, or if externalEdges is
+        True, edges between 1 of the genes of interest and any other gene.
+        Genes that are not in the geneset or not connected to a geneset gene
+        if externalEdges is True are 0.
+        """
+        return np.multiply(
+            self.admatrix,
+            self.get_geneset_selection_matrix(geneset,externalEdges)
+        )
+
+    def get_geneset_selection_matrix(self,geneset,externalEdges=False):
+        """
+        For a given set of genes, returns a matrix with row and columns
+        1 for genes of the set, and 0 for all others if externalEdges is True.
+        If externalEdges is False only 1 for combinations of genes within
+        the geneset, and 0 for all others.
+        """
+        genesetVector = self.get_nodes_series().isin(geneset).astype(np.float32).as_matrix()
+        if externalEdges:
+            return np.logical_or(
+                np.outer(genesetVector,np.ones(len(genesetVector))),
+                np.outer(np.ones(len(genesetVector)),genesetVector)
+            ).astype(np.float32)
+        else:
+            return np.outer(genesetVector,genesetVector)
 
 # Kernels
 class Kernel():
@@ -111,8 +178,50 @@ class Kernel():
             return self.computedMatrix.__repr__()
 
     def compute(self):
+        """
+        sets self.computedMatrix
+        returns self
+        """
         raise NotImplementedError('implement in inheriting classes')
 
+    def score_geneset(self,geneset,ax=None):
+        """
+        Calculate the sum of a geneset.
+        netwink.apply_gene_scores(genescores) has to been run before
+        """
+        score = np.multiply(
+            self.computedMatrix,
+            np.multiply(self.netwink.scoresMatrix,self.netwink.subset_adjmatrix(geneset))
+        ).sum()
+        if ax: ax.axvline(score,c='r')
+        return score
+
+    def permutate_geneset_scores(self,geneset,numberOfPermutations=1000,seed=None,ax=None):
+        """
+        Takes the length of the passed geneset, then makes `numberOfPermutations` genesets
+        of the same length and calculates their scores. Returns a list with the scores.
+
+        seed can be used to (re)set the random state
+        """
+        genesetLength = len(geneset)
+        allGenes = set(self.netwink.get_nodes_series())
+        if seed: random.seed(seed)
+        shelveKey = 'Geneset length {} - permutations {} - seed {}'.format(
+            genesetLength,numberOfPermutations,seed
+            #optionally also include a hash of the netwink object to be sure it did not change
+        )
+        try: scores = self.netwink.shelve[shelveKey]
+        except KeyError:
+            scores = [
+                self.score_geneset(random.sample(allGenes,genesetLength))
+                for i in range(numberOfPermutations)
+            ]
+            self.netwink.shelve[shelveKey] = scores
+            #logger.
+        if ax:
+            sns.distplot(scores,ax=ax)
+        return scores
+        
     def visualize(self):
         plt.matshow(self.computedMatrix)
         

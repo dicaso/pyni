@@ -19,6 +19,9 @@ setup(name = package,
           'networkx',
           'biomart'
       ],
+      extras_require = {
+          'documentation': ['Sphinx']
+      },
       package_data = {
           'ninklings': [
           ]
