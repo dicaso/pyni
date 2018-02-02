@@ -12,15 +12,20 @@ Network ink enrichment stats
 ## Working on the project
 `workon ninklings`
 
-	import ninklings as ni, random
-	import matplotlib.pyplot as plt
-	netwink = ni.Netwink('/tmp/testnet')
-	#netkernel = ni.ExponentialDiffusionKernel(netwink).compute()
-	netkernel = ni.RestartRandomWalk(netwink).compute()
-   	genesetscores = {g:random.randint(10,100) for g in random.sample(set(netwink.get_nodes_series()),50)}
-	randomgeneset = random.sample(set(netwink.get_nodes_series()),20)
-	netwink.apply_gene_scores(genesetscores)
-	fig, ax = plt.subplots()
-	genesetscore = netkernel.score_geneset(randomgeneset)
-	nulldistro = netkernel.permutate_geneset_scores(randomgeneset,ax=ax)
-	ax.axvline(genesetscore,c='r')
+    import ninklings as ni, random
+    import matplotlib.pyplot as plt
+    netwink = ni.Netwink('/tmp/testnet')
+    #netkernel = ni.ExponentialDiffusionKernel(netwink).compute()
+    netkernel = ni.RestartRandomWalk(netwink).compute()
+    genesetscores = {g:random.randint(10,100) for g in random.sample(set(netwink.get_nodes_series()),50)}
+    randomgeneset = random.sample(set(netwink.get_nodes_series()),20)
+    netwink.apply_gene_scores(genesetscores)
+    fig, ax = plt.subplots()
+    genesetscore = netkernel.score_geneset(randomgeneset,ax=ax)
+    nulldistro = netkernel.permutate_geneset_scores(randomgeneset,ax=ax)
+
+## Working on the documentation
+
+   pip install ninklings[documentation]
+   #sphinx-quickstart #was used for initiating the documentation
+   
