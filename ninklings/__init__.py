@@ -42,10 +42,10 @@ class Netwink():
         self.location = savedir
         self.name = name if name else os.path.basename(savedir)
         self.logger = logging.Logger(self.name,level=loglevel)
-        self.shelve = shelve.open(os.path.join(self.location,'distrostore'))
         if fullInit:
             self.check_location()
             self.setup_logging(loglevel)
+            self.shelve = shelve.open(os.path.join(self.location,'distrostore'))
             self.set_annotation()
             self.load_network(cosmicOnly)
             self.logger.debug('%s fully created',self)
@@ -188,6 +188,12 @@ class Kernel():
         """
         Calculate the sum of a geneset.
         netwink.apply_gene_scores(genescores) has to been run before
+        
+        The function spreads the impact of the genes in the geneset of interest
+        by constructing a vector as big as the network (1 for gene of interest, 0 otherwise),
+        elementwise multpication with kernel computed matrix
+        sum defines the subnetwork, but permutation test is needed to test how relevant
+        its sum is, compared to scores randomly same-sized genesets get.
         """
         score = np.multiply(
             self.computedMatrix,
@@ -224,6 +230,23 @@ class Kernel():
         
     def visualize(self):
         plt.matshow(self.computedMatrix)
+
+    def convert_to_distance(self):
+        """
+        convert a kernel computed matrix to a distance matrix by subtrating from 1
+        and equaling the diagonale positions to 0 distance
+        
+        the distance matrix can be used for clustering related genes
+        this is good to use in a check, e.g. checking enrichment of biological functions
+        """
+        # Take average values in case computedMatrix is not symmetrical
+        averageMatrix = (self.computedMatrix + self.computedMatrix.T)/2
+        # Substract from 1 to get distance instead of connectedness and set diagonal distances to 0
+        distanceMatrix = np.multiply(
+            1 - averageMatrix,
+            np.logical_not(np.matrix(np.diag(np.ones(len(averageMatrix)))))
+        )
+        return distanceMatrix
         
 ## laplacian exponential diffusion kernel
 class ExponentialDiffusionKernel(Kernel):
@@ -237,18 +260,11 @@ class ExponentialDiffusionKernel(Kernel):
 ## restart random walk
 class RestartRandomWalk(Kernel):
     def compute(self,restartProb = 0.1):
+        """
+        computed restartmatrix is not symmetrical
+        """
         self.degreematrix = np.diag(np.array(self.netwink.admatrix.sum(axis=1)).flatten())
         self.inversematrix = np.linalg.inv(self.degreematrix - ((1-restartProb)*self.netwink.admatrix))
         self.restartmatrix = self.inversematrix*self.degreematrix # => op factor na probabiliteiten => geen kernel
         self.computedMatrix = self.restartmatrix
         return self
-        
-#vertrekken van gen dat e.g. gemuteerd is (restartmatrix is niet symmetrisch)
-# restartmatrix -> converteren naar afstandsmatrix (1 - ) en diagonaal op 0 zetten
-# daarmee kan je clusteren -> groepen van genen in elkaars buurt
-# goed ter controle, enrichment ook controleren -> biologische functie
-
-#genes of interest impact verspreiden
-# vector bouwen even groot als netwerk (1 voor gene of interest, 0 anders),
-# elementwise vermenigvuldigen met restartmatrix of expm
-# sum -> definieert subnetwerk
