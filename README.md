@@ -38,3 +38,56 @@ Network ink enrichment stats
 
 Before publication, follow http://dont-be-afraid-to-commit.readthedocs.io/en/latest/documentation.html
 to make it public
+
+
+# Meeting 19-02-2018
+
+disconneted components, full lines or columns that are 0
+check up front for those rows and cols
+remove them, for calculations, then reinserting
+
+=> in the base class
+
+for inversion matrices very important
+
+* normalization
+cosine normalization and eucledian transformation
+=> hard to explain why normalization would be needed
+
+eucledian distance
+meta distance
+
+hotnet paper
+
+ward only when eucledian distance
+
+
+weight matrix for overlay of adjacency matrix
+whenever you have weights you should use them
+
+normal expression in that tissue, or independent
+  gene expression network
+filter the network for our condition
+
+in undirectional network use absolute values of the correlation
+
+sanity check: check clustering in
+visualized network (cytoscape e.g.)
+
+with random walk weights are in any case normolized
+with weight they become proportional
+
+PLANNING
+--------
+- weight matrices (mogelijks verschillende manieren om dat te doen) (dissapear node -> sink node)
+
+- ranks toepassen -> monotoon, continue
+ - subranks afzonderlijk toepassen en dan integreren
+
+- opmerkelijke stijgers en dalers in je rankings
+
+- analyze laten shiften tussen volledig prior en volledig colleratie netwerk
+
+CAMDA challenge
+---------------
+Maarten gaat erop werken

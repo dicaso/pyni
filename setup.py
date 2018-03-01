@@ -17,7 +17,7 @@ setup(name = package,
           'scipy',
           'requests',
           'networkx',
-          'biomart'
+          'bidali'
       ],
       extras_require = {
           'documentation': ['Sphinx']

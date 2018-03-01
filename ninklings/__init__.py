@@ -7,30 +7,13 @@ from io import  StringIO
 import os, logging, random, shelve
 import matplotlib.pyplot as plt
 import seaborn as sns
+from bidali.LSD.dealer.external.ensembl import get_biomart
 
 # Set matplotlib to interactive mode when executed from interactive shell
 if 'ps1' in vars(os.sys): plt.ion()
 
-# Package data
-pkgdatadir = '{}/../data/%s'.format(os.path.dirname(__file__)) #TODO change to subdir ninklings when making public
-
-## Biomart
-def get_biomart(atts=None):
-    """
-    Get biomart id mappings
-
-    >>> bmrt = get_biomart()
-    """
-    import biomart
-    server = biomart.BiomartServer("http://www.ensembl.org/biomart")
-    # default atts
-    if not atts:
-        atts = ['external_gene_name','external_gene_source','ensembl_gene_id',
-                'ensembl_transcript_id','ensembl_peptide_id']
-    hge = server.datasets['hsapiens_gene_ensembl']
-    s = hge.search({'attributes': atts}, header=1)
-    data = pd.read_table(StringIO(s.content.decode()))
-    return data
+# Configuration
+from .config import config
 
 class Netwink():
     """
@@ -92,7 +75,7 @@ class Netwink():
         if os.path.exists(self.networkFile):
             self.networkgenes = pd.read_table(self.networkFile)
         else:
-            networktable = pd.read_table(os.path.expanduser(pkgdatadir % 'reactome_FI.txt'))
+            networktable = pd.read_table(os.path.join(config['ninklings']['datadir'],'reactome_FI.txt'))
             networktable = networktable[networktable.Gene1.isin(self.annotation['Gene name'])]
             networktable = networktable[networktable.Gene2.isin(self.annotation['Gene name'])]
             networktable = networktable[networktable.Score >= .75]
@@ -104,7 +87,7 @@ class Netwink():
         self.networkgenes.T.apply(lambda x: self.graph.add_edge(x['Gene1'],x['Gene2']))
         if cosmicOnly:
             cosmicgenes = set(pd.read_table(
-                os.path.expanduser(pkgdatadir % 'cosmic_20180125.tsv')
+                os.path.join(config['ninklings']['datadir'],'cosmic_20180125.tsv')
             )['Gene Symbol'])
             self.graph = self.graph.subgraph(cosmicgenes)
             components = {
@@ -114,6 +97,39 @@ class Netwink():
             self.graph = components[max(components)]
         self.admatrix = nx.adjacency_matrix(self.graph).todense()
         self.admatrix = self.admatrix.astype(np.float32)
+        # Set weights to default of 1
+        self.weights = np.ones(self.admatrix.shape)
+
+    def load_weights(self,weights):
+        """
+        Load weights such as context relevant correlation values
+
+        TODO what to do with NA weights?
+        """
+        self.weights = weights
+
+    def load_correlations(self,nodesCorrelationData,method='pearson',expSmoothening=1,**kwargs):
+        """
+        Calculate correlations based on the data in nodesCorrelationData pd.DataFrame
+        and load them as weights
+
+        if nodesCorrelationData is not pd.DataFrame, it is assumed to be a filename,
+        that will be used to load the DataFrame with pd.read_csv and kwargs provided.
+
+        correlation method => any method accepted by DataFrame.corr (pearson, kendall, spearman)
+
+        expSmoothening => all corr values are transformed to the power of expSmoothening
+          values furhter away from 1 will go exponentially towards 0 with higher expSmoothening value
+        """
+        if type(nodesCorrelationData) != pd.DataFrame:
+            nodesCorrelationData = pd.read_csv(nodesCorrelationData,**kwargs)
+        # Filter non-node data
+        nodesCorrelationData = nodesCorrelationData.reindex(self.get_nodes_series())
+        correlations = nodesCorrelationData.T.corr(method=method)
+        self.correlationSigns = np.sign(correlations)
+        weights = correlations.abs() ** expSmoothening
+        self.load_weights(weights)
+        
 
     def get_nodes_series(self):
         return pd.Series(self.graph.nodes)
