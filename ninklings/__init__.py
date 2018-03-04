@@ -200,7 +200,7 @@ class Kernel():
         """
         raise NotImplementedError('implement in inheriting classes')
 
-    def score_geneset(self,geneset,ax=None):
+    def score_geneset(self,geneset,ax=None,c='r'):
         """
         Calculate the sum of a geneset.
         netwink.apply_gene_scores(genescores) has to been run before
@@ -215,7 +215,7 @@ class Kernel():
             self.computedMatrix,
             np.multiply(self.netwink.scoresMatrix,self.netwink.subset_adjmatrix(geneset))
         ).sum()
-        if ax: ax.axvline(score,c='r')
+        if ax: ax.axvline(score,c=c)
         return score
 
     def permutate_geneset_scores(self,geneset,numberOfPermutations=1000,seed=None,ax=None):

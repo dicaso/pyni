@@ -9,20 +9,45 @@ Network ink enrichment stats
     pip install -e .     # installs package linked to the git repo
     python setup.py test # runs all the tests
 
+### Configuration file
+
+`ninklings.cfg` in your working directory, `~/ninklings.cfg`, or `/etc/ninklings.cfg` (in this order of precedence)
+
+    [ninklings]
+    datadir = ...path-to-repository.../ninklings/data
+
 ## Working on the project
 `workon ninklings`
+
+### Setting up network
 
     import ninklings as ni, random
     import matplotlib.pyplot as plt
     netwink = ni.Netwink('/tmp/testnet',cosmicOnly=True)
-    #netkernel = ni.ExponentialDiffusionKernel(netwink).compute()
-    netkernel = ni.RestartRandomWalk(netwink).compute()
-    genesetscores = {g:random.randint(10,100) for g in random.sample(set(netwink.get_nodes_series()),50)}
-    randomgeneset = random.sample(set(netwink.get_nodes_series()),20)
-    netwink.apply_gene_scores(genesetscores)
+    netwink.plot_admatrix()
+    netkernel = ni.RestartRandomWalk(netwink).compute()    #ni.ExponentialDiffusionKernel(netwink).compute()
+
+### Working with genesets
+
+    from bidali.LSD import get_msigdb6
+    mdb = get_msigdb6()
+    gs_p53 = {g for g in mdb['H']['HALLMARK_P53_PATHWAY'] if g in set(netwink.get_nodes_series())} #only 26 out of 200 in cosmic
+    genescores = {g:random.randint(10,100) for g in random.sample(set(netwink.get_nodes_series()),len(gs_p53))} #TODO good random model
+    randomgeneset = random.sample(set(netwink.get_nodes_series()),len(gs_p53))
+    netwink.apply_gene_scores(genescores)
     fig, ax = plt.subplots()
-    genesetscore = netkernel.score_geneset(randomgeneset,ax=ax)
+    genesetscore_random = netkernel.score_geneset(randomgeneset,ax=ax)
+    genesetscore_p53 = netkernel.score_geneset(gs_p53,ax=ax,c='g')
     nulldistro = netkernel.permutate_geneset_scores(randomgeneset,ax=ax)
+
+### Loading weights
+
+    from bidali.LSD.dealer.external.cohorts import get_FischerData
+    fd = get_FischerData()
+    netwink.load_correlations(fd.exprdata)
+
+### Hierarchical clustering
+
     from scipy.cluster.hierarchy import dendrogram, linkage, to_tree
     Z=linkage(netkernel.convert_to_distance(),'ward')
     fig = plt.figure(figsize=(25, 10))
