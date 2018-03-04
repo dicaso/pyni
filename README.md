@@ -1,5 +1,5 @@
-# ninklings
-Network ink enrichment stats
+# ninklings -Network ink enrichment stats
+<img title="ninklings logo" src="ni_logo.svg" width="300">
 
 ## Get started
 
@@ -37,7 +37,7 @@ Network ink enrichment stats
     netwink.apply_gene_scores(genescores)
     fig, ax = plt.subplots()
     genesetscore_random = netkernel.score_geneset(randomgeneset,ax=ax)
-    genesetscore_p53 = netkernel.score_geneset(gs_p53,ax=ax,c='g')
+    genesetscore_p53 = netkernel.score_geneset(gs_p53,ax=ax)#,c='g')
     nulldistro = netkernel.permutate_geneset_scores(randomgeneset,ax=ax)
 
 ### Loading weights
