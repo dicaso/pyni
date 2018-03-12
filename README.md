@@ -1,6 +1,10 @@
 # ninklings -Network ink enrichment stats
 <img title="ninklings logo" src="ni_logo.svg" width="300">
 
+## Requirements
+
+ - https://virtualenvwrapper.readthedocs.io/en/latest/
+
 ## Get started
 
     git clone https://github.ugent.be/cvneste/ninklings.git && cd ninklings
