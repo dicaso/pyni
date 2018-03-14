@@ -10,6 +10,7 @@ configFileDirOptions = [
 config = configparser.ConfigParser()
 config['ninklings'] = {
     'datadir': '{}/../data'.format(os.path.dirname(__file__)), #TODO change to subdir ninklings when making public
+    'projectdir': '/tmp'
 }
 
 # Read configuration file
