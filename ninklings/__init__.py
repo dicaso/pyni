@@ -2,6 +2,7 @@
 import networkx as nx
 import numpy as np
 from scipy.linalg import expm
+from collections import OrderedDict
 import pandas as pd
 from io import  StringIO
 import os, logging, random, shelve
@@ -14,6 +15,9 @@ if 'ps1' in vars(os.sys): plt.ion()
 
 # Configuration
 from .config import config
+
+# Kernels
+from .kernels import ExponentialDiffusionKernel, RestartRandomWalk
 
 class Netwink():
     """
@@ -31,6 +35,7 @@ class Netwink():
             self.shelve = shelve.open(os.path.join(self.location,'distrostore'))
             self.set_annotation()
             self.load_network(cosmicOnly)
+            self.associated_kernels = {}
             self.logger.debug('%s fully created',self)
         else: self.logger.warning('%s created but no network loaded',self)
 
@@ -184,4 +189,43 @@ class Netwink():
         else:
             return np.outer(genesetVector,genesetVector)
 
-from .kernels import ExponentialDiffusionKernel, RestartRandomWalk
+    def gsea(self,genesets, scores, kernel, nperm = 10000, minSize = 10):
+        """
+        Calculate a score and p-value for every geneset in genesets
+        with gene scores and a defined kernel
+
+        kernel options: 'random_walk', 'exp'
+
+        nperm => number of permutations
+
+        minsize a genesets needs after filtering genes not in the analysed network
+        """
+        kernels = {
+            'random_walk': ExponentialDiffusionKernel,
+            'exp': RestartRandomWalk
+        }
+        if kernel not in self.associated_kernels:
+            self.associated_kernels[kernel] = kernels[kernel](self).compute()
+        kernel = self.associated_kernels[kernel]
+        # apply scores
+        self.apply_gene_scores(scores)
+        # prune genesets
+        geneset_originalSizes = {gs:len(genesets[gs]) for gs in genesets}
+        allGenes = set(self.get_nodes_series())
+        genesets = {gs:[g for g in genesets[gs] if g in allGenes] for gs in genesets}
+        geneset_sizes = {gs:len(genesets[gs]) for gs in genesets}
+        # calculate scores
+        geneset_scores = {}
+        geneset_probs = {}
+        for gs in genesets:
+            geneset_scores[gs] = kernel.score_geneset(genesets[gs])
+            geneset_probs[gs] = (pd.Series(
+                kernel.permutate_geneset_scores(genesets[gs],numberOfPermutations=nperm)
+            ) > geneset_scores[gs]).mean()
+        results = pd.DataFrame(
+            {'score': geneset_scores, 'prob': geneset_probs, 'size': geneset_sizes, 'osize': geneset_originalSizes},
+            columns = ['osize','size','score','prob']
+        ).sort_values('prob')
+        results = results[results['size'] >= minSize]
+        return results
+    

@@ -90,7 +90,6 @@ hotnet paper
 
 ward only when eucledian distance
 
-
 weight matrix for overlay of adjacency matrix
 whenever you have weights you should use them
 
@@ -103,7 +102,7 @@ in undirectional network use absolute values of the correlation
 sanity check: check clustering in
 visualized network (cytoscape e.g.)
 
-with random walk weights are in any case normolized
+with random walk weights are in any case normalised
 with weight they become proportional
 
 PLANNING
@@ -120,3 +119,11 @@ PLANNING
 CAMDA challenge
 ---------------
 Maarten gaat erop werken
+
+# meeting
+
+- hybride methode fgsea ni.algorithm
+gediffundeerde/gedistribueerde waarden terug sturen naar de fgsea -> betere resultaten verwachten
+*of* leave 'one' out -> percentage true genes, toch score geven uit false genes
+
+- klein netwerk manuele score vector -> test code

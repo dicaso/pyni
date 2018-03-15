@@ -37,18 +37,55 @@ class GenesetBenchmark:
         self.geneLabels = self.netwink.get_nodes_series().as_matrix()
         self.genesets_r = genesets2indices_r(self.genesets,self.geneLabels)
 
-    def run_ni(self):
+    def run_ni(self, kernel = 'random_walk'):
         """
         Run ninklings algorithm
         """
-        pass
+        self.niresults = self.netwink.gsea(
+            self.genesets, self.sims.data.set_index('gene').score, kernel = kernel, minSize = 10
+        )
     
     def run_opponent(self):
         """
         Runs the competing method
         """
         from bidali.retro import fgsea
-        self.opresults = fgsea(self.genesets_r, self.sims.data.set_index('gene').score)
+        self.opresults = fgsea(self.genesets_r, self.sims.data.set_index('gene').score, minSize = 10)
+
+    def compare_methods(self, permutations = 30, kernel = 'random_walk', simul_kwargs = {}):
+        """
+        Runs run_ni and run_opponent x times (permutations)
+        and compares results
+        """
+        self.niresultsList = []
+        self.opresultsList = []
+        for i in range(permutations):
+            self.sims = SimScores(
+                self.netwink.get_nodes_series(),
+                self.trueGenes,
+                **simul_kwargs
+            )
+            print('Running ni {} ...'.format(i))
+            self.run_ni(kernel = kernel)
+            print('Running op {} ...'.format(i))
+            self.run_opponent()
+            self.niresultsList.append(self.niresults)
+            self.opresultsList.append(self.opresults)
+        # summarize comparison
+        rankpositions = {}
+        probabilities = {}
+        for true_geneset in self.truth:
+            rankpositions[(true_geneset,'ni')] = []
+            rankpositions[(true_geneset,'op')] = []
+            probabilities[(true_geneset,'ni')] = []
+            probabilities[(true_geneset,'op')] = []
+            for nir,opr in zip(self.niresultsList, self.opresultsList):
+                rankpositions[(true_geneset,'ni')].append(nir.index.get_loc(true_geneset))
+                rankpositions[(true_geneset,'op')].append(opr.set_index('pathway').index.get_loc(true_geneset))
+                probabilities[(true_geneset,'ni')].append(nir.loc[true_geneset].prob)
+                probabilities[(true_geneset,'op')].append(opr.set_index('pathway').loc[true_geneset].pval)
+        self.rankcomparison = pd.DataFrame(rankpositions)
+        self.probcomparison = pd.DataFrame(probabilities)
 
 def main(args=None):
     """
@@ -67,6 +104,6 @@ def main(args=None):
         trueGenesets = {k:mdb['H'][k] for k in mdb['H'].keys() & trueGenesets},
         netwink_kwargs = {'cosmicOnly': True}
     )
-    bm.run_opponent()
+    bm.compare_methods()
 
     return bm
