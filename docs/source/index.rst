@@ -1,9 +1,9 @@
-.. Ninklings documentation master file, created by
+.. Pyni documentation master file, created by
    sphinx-quickstart on Fri Feb  2 11:11:24 2018.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Ninklings's documentation!
+Welcome to Pyni's documentation!
 =====================================
 
 .. toctree::
@@ -21,5 +21,5 @@ Indices and tables
 
 Module documentation
 ====================
-.. automodule:: ninklings
+.. automodule:: pyni
    :members:

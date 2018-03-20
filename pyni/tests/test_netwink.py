@@ -3,7 +3,7 @@
 from unittest.mock import Mock, MagicMock, patch, call
 from unittest import TestCase
 import os, shutil, tempfile
-from ninklings import Netwink
+from pyni import Netwink
 
 class test_Netwink(TestCase):
     def setUp(self):

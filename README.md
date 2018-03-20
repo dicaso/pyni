@@ -1,5 +1,5 @@
-# ninklings -Network ink enrichment stats
-<img title="ninklings logo" src="ni_logo.svg" width="300">
+# pyni -Network ink enrichment stats
+<img title="pyni logo" src="ni_logo.svg" width="300">
 
 ## Requirements
 
@@ -7,25 +7,25 @@
 
 ## Get started
 
-    git clone https://github.ugent.be/cvneste/ninklings.git && cd ninklings
+    git clone https://github.ugent.be/cvneste/pyni.git && cd pyni
     git checkout -b $USER
-    mkvirtualenv ninklings
+    mkvirtualenv pyni
     pip install -e .     # installs package linked to the git repo
     python setup.py test # runs all the tests
 
 ### Configuration file
 
-`ninklings.cfg` in your working directory, `~/ninklings.cfg`, or `/etc/ninklings.cfg` (in this order of precedence)
+`pyni.cfg` in your working directory, `~/pyni.cfg`, or `/etc/pyni.cfg` (in this order of precedence)
 
-    [ninklings]
-    datadir = ...path-to-repository.../ninklings/data
+    [pyni]
+    datadir = ...path-to-repository.../pyni/data
 
 ## Working on the project
-`workon ninklings`
+`workon pyni`
 
 ### Setting up network
 
-    import ninklings as ni, random
+    import pyni as ni, random
     import matplotlib.pyplot as plt
     netwink = ni.Netwink('/tmp/testnet',cosmicOnly=True)
     netwink.plot_admatrix()
@@ -61,7 +61,7 @@
 
 ## Working on the documentation
 
-    pip install ninklings[documentation]
+    pip install pyni[documentation]
     #sphinx-quickstart #was used for initiating the documentation
     cd docs && make html
 

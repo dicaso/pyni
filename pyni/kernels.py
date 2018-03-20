@@ -6,16 +6,32 @@ Kernel base (interface) class and implementing classes.
 """
 
 import random, numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
 # Kernels
 class Kernel():
-    def __init__(self,netwink):
+    def __init__(self,netwink,kernelspec={}):
+        """
+        netwink: the network object with which the kernel is associated
+        kernelspec: dict with parameters for kernel computation
+        """
         self.netwink = netwink
+        self.spec = kernelspec
 
     def __repr__(self):
         if 'computedMatrix' in vars(self):
             return self.computedMatrix.__repr__()
+
+    def __str__(self):
+        return '{}_{}_{}'.format(
+            self.netwink.name,
+            self.__class__.__name__,
+            '_'.join(['{}_{}'.format(k,self.spec[k]) for k in sorted(self.spec)]) if self.spec else 'default'
+        )
+
+    def __hash__(self):
+        return hash(str(self))
 
     def compute(self):
         """
@@ -24,7 +40,7 @@ class Kernel():
         """
         raise NotImplementedError('implement in inheriting classes')
 
-    def score_geneset(self,geneset,ax=None,c='r'):
+    def score_geneset(self,geneset,method='vector',ax=None,c='r'):
         """
         Calculate the sum of a geneset.
         netwink.apply_gene_scores(genescores) has to been run before
@@ -35,10 +51,14 @@ class Kernel():
         sum defines the subnetwork, but permutation test is needed to test how relevant
         its sum is, compared to scores randomly same-sized genesets get.
         """
-        score = np.multiply(
-            self.computedMatrix,
-            np.multiply(self.netwink.scoresMatrix,self.netwink.subset_adjmatrix(geneset))
-        ).sum()
+        if method == 'vector':
+            diffusion =  self.netwink.scoresVector @ self.computedMatrix
+            score = diffusion.T[self.netwink.get_nodes_series().isin(geneset)].sum()
+        elif method == 'matrix':
+            score = np.multiply(
+                self.computedMatrix,
+                np.multiply(self.netwink.scoresMatrix,self.netwink.subset_adjmatrix(geneset))
+            ).sum()
         if ax: ax.axvline(score,c=c)
         return score
 
@@ -52,9 +72,9 @@ class Kernel():
         genesetLength = len(geneset)
         allGenes = set(self.netwink.get_nodes_series())
         if seed: random.seed(seed)
-        shelveKey = 'Geneset length {} - permutations {} - seed {}'.format(
-            genesetLength,numberOfPermutations,seed
-            #optionally also include a hash of the netwink object to be sure it did not change
+        shelveKey = 'Geneset length {} - permutations {} - seed {} - kernel hash {}'.format(
+            genesetLength,numberOfPermutations,seed,hash(self)
+            #optionally also include a hash of the netwink nodes+edges to be sure it did not change
         )
         try: scores = self.netwink.shelve[shelveKey]
         except KeyError:
@@ -90,7 +110,14 @@ class Kernel():
         
 ## laplacian exponential diffusion kernel
 class ExponentialDiffusionKernel(Kernel):
-    def compute(self,alpha = 1):
+    def compute(self):
+        """
+        Spec parameters:
+        alpha (default: 1)
+        """
+        # Set parameters
+        alpha = 1 if 'alpha' not in self.spec else self.spec['alpha']
+        # Compute
         from scipy.linalg import expm
         self.degreematrix = np.diag(np.array(self.netwink.admatrix.sum(axis=1)).flatten())
         self.laplacian = self.degreematrix - self.netwink.admatrix
@@ -99,10 +126,16 @@ class ExponentialDiffusionKernel(Kernel):
 
 ## restart random walk
 class RestartRandomWalk(Kernel):
-    def compute(self,restartProb = 0.1):
+    def compute(self):
         """
         computed restartmatrix is not symmetrical
+
+        Spec parameters:
+        restartProb (default: 0.1)
         """
+        # Set parameters
+        restartProb = 0.1 if 'restartProb' not in self.spec else self.spec['restartProb']
+        # Compute
         self.degreematrix = np.diag(np.array(self.netwink.admatrix.sum(axis=1)).flatten())
         self.inversematrix = np.linalg.inv(self.degreematrix - ((1-restartProb)*self.netwink.admatrix))
         self.restartmatrix = self.inversematrix*self.degreematrix # => op factor na probabiliteiten => geen kernel

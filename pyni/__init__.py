@@ -80,7 +80,7 @@ class Netwink():
         if os.path.exists(self.networkFile):
             self.networkgenes = pd.read_table(self.networkFile)
         else:
-            networktable = pd.read_table(os.path.join(config['ninklings']['datadir'],'reactome_FI.txt'))
+            networktable = pd.read_table(os.path.join(config['pyni']['datadir'],'reactome_FI.txt'))
             networktable = networktable[networktable.Gene1.isin(self.annotation['Gene name'])]
             networktable = networktable[networktable.Gene2.isin(self.annotation['Gene name'])]
             networktable = networktable[networktable.Score >= .75]
@@ -92,7 +92,7 @@ class Netwink():
         self.networkgenes.T.apply(lambda x: self.graph.add_edge(x['Gene1'],x['Gene2']))
         if cosmicOnly:
             cosmicgenes = set(pd.read_table(
-                os.path.join(config['ninklings']['datadir'],'cosmic_20180125.tsv')
+                os.path.join(config['pyni']['datadir'],'cosmic_20180125.tsv')
             )['Gene Symbol'])
             self.graph = self.graph.subgraph(cosmicgenes)
             components = {
@@ -154,9 +154,8 @@ class Netwink():
         In the returned matrix, each gene connected to the row's gene
         gets the score of that gene. The returned matrix is not symmetrical.
         """
-        scoresDiag = np.matrix(np.diag(
-            self.get_nodes_series().map(genescores).fillna(fillna).astype(np.float32).as_matrix()
-        ))
+        self.scoresVector = self.get_nodes_series().map(genescores).fillna(fillna).astype(np.float32).as_matrix()
+        scoresDiag = np.matrix(np.diag(self.scoresVector))
         self.scoresMatrix = scoresDiag * np.matrix(self.admatrix)
         
     
@@ -189,7 +188,19 @@ class Netwink():
         else:
             return np.outer(genesetVector,genesetVector)
 
-    def gsea(self,genesets, scores, kernel, nperm = 10000, minSize = 10):
+    def visualize(self,outfiletype='pdf'):
+        """Visualize graph
+
+        Uses the Graphviz program
+        """
+        import pydot
+        from networkx.drawing.nx_pydot import write_dot
+        from plumbum import local
+        filename = os.path.join(self.location,'grid.dot')
+        write_dot(self.graph, filename)
+        local['neato']('-T'+outfiletype,filename,'-o{}{}'.format(filename[:-3],outfiletype))        
+
+    def gsea(self,genesets, scores, kernel, nperm = 10000, minSize = 10, kernel_compute_kwargs = {}):
         """
         Calculate a score and p-value for every geneset in genesets
         with gene scores and a defined kernel
@@ -201,12 +212,14 @@ class Netwink():
         minsize a genesets needs after filtering genes not in the analysed network
         """
         kernels = {
-            'random_walk': ExponentialDiffusionKernel,
-            'exp': RestartRandomWalk
+            'random_walk': RestartRandomWalk,
+            'exp': ExponentialDiffusionKernel
         }
-        if kernel not in self.associated_kernels:
-            self.associated_kernels[kernel] = kernels[kernel](self).compute()
-        kernel = self.associated_kernels[kernel]
+        kernel = kernels[kernel](self, kernelspec = kernel_compute_kwargs)
+        if str(kernel) in self.associated_kernels:
+            # if kernel has been computed earlier, swap for computed kernel
+            kernel = self.associated_kernels[str(kernel)]
+        else: self.associated_kernels[str(kernel)] = kernel.compute()
         # apply scores
         self.apply_gene_scores(scores)
         # prune genesets
