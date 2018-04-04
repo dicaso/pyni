@@ -9,7 +9,7 @@ configFileDirOptions = [
 # Default configuration
 config = configparser.ConfigParser()
 config['pyni'] = {
-    'datadir': '{}/../data'.format(os.path.dirname(__file__)), #TODO change to subdir pyni when making public
+    'datadir': '{}/data'.format(os.path.dirname(__file__)), #TODO change to subdir pyni when making public
     'projectdir': '/tmp'
 }
 

@@ -1,7 +1,7 @@
 from setuptools import setup
 
 package = "pyni"
-version = "0.0.3"
+version = "0.0.4"
 
 setup(name = package,
       version = version,
@@ -11,6 +11,7 @@ setup(name = package,
       author_email = 'christophe.vanneste@ugent.be',
       license = 'GNU GENERAL PUBLIC LICENSE',
       packages = ['pyni'],
+      python_requires='>3.6',
       install_requires = [
           'matplotlib',
           'pandas',
@@ -25,9 +26,10 @@ setup(name = package,
       },
       package_data = {
           'pyni': [
+              'data/reactome_FI.txt',
           ]
       },
-      include_package_data = False,
+      include_package_data = True,
       zip_safe = False,
       entry_points = {
           'console_scripts': ['ni=pyni.__main__:main'],

@@ -5,7 +5,11 @@
 
  - https://virtualenvwrapper.readthedocs.io/en/latest/
 
-## Get started
+## Installation
+
+   pip install pyni
+
+## Get started for development
 
     git clone https://github.ugent.be/cvneste/pyni.git && cd pyni
     git checkout -b $USER
@@ -27,7 +31,7 @@
 
     import pyni as ni, random
     import matplotlib.pyplot as plt
-    netwink = ni.Netwink('/tmp/testnet',cosmicOnly=True)
+    netwink = ni.Netwink('/tmp/pyni_cosmic',cosmicOnly=True)
     netwink.plot_admatrix()
     netkernel = ni.RestartRandomWalk(netwink).compute()    #ni.ExponentialDiffusionKernel(netwink).compute()
 
