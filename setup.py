@@ -1,12 +1,12 @@
 from setuptools import setup
 
 package = "pyni"
-version = "0.0.2"
+version = "0.0.3"
 
 setup(name = package,
       version = version,
       description="Python network inference package",
-      url='https://github.ugent.be/cvneste/pyni',
+      url='https://github.com/beukueb/pyni',
       author = 'Christophe Van Neste',
       author_email = 'christophe.vanneste@ugent.be',
       license = 'GNU GENERAL PUBLIC LICENSE',
