@@ -53,6 +53,8 @@ class Kernel():
         """
         if method == 'vector':
             diffusion =  self.netwink.scoresVector @ self.computedMatrix
+            #score matrix repeat tot size computed matrix, nadien col sums resultaat (diffusie matrix moet wel row sums 1 hebben)
+            #genormaliseerde correlatie waarden als gewichten
             score = diffusion.T[self.netwink.get_nodes_series().isin(geneset)].sum()
         elif method == 'matrix':
             score = np.multiply(
@@ -139,5 +141,5 @@ class RestartRandomWalk(Kernel):
         self.degreematrix = np.diag(np.array(self.netwink.admatrix.sum(axis=1)).flatten())
         self.inversematrix = np.linalg.inv(self.degreematrix - ((1-restartProb)*self.netwink.admatrix))
         self.restartmatrix = self.inversematrix*self.degreematrix # => op factor na probabiliteiten => geen kernel
-        self.computedMatrix = self.restartmatrix
+        self.computedMatrix = self.restartmatrix #TODO possibly normalise so that row sums are 1
         return self

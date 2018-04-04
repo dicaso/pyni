@@ -1,4 +1,4 @@
-# pyni -Network ink enrichment stats
+# pyni - Network ink enrichment stats
 <img title="pyni logo" src="ni_logo.svg" width="300">
 
 ## Requirements

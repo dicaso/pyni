@@ -3,7 +3,7 @@ import configparser, os
 configFileDirOptions = [
     '.',
     os.path.expanduser('~'),
-    '/etc'
+    '/usr/local/etc'
 ]
 
 # Default configuration
