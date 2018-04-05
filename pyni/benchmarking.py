@@ -89,7 +89,7 @@ class GenesetBenchmark:
         self.rankcomparison = pd.DataFrame(rankpositions)
         self.probcomparison = pd.DataFrame(probabilities)
 
-def main(args=None):
+def main(netwink_kwargs={}):
     """
     Runs benchmarking test for pyni' algorithms
     """
@@ -102,11 +102,12 @@ def main(args=None):
         'HALLMARK_E2F_TARGETS',
         'HALLMARK_G2M_CHECKPOINT'
     }
+    netwink_kwargs.setdefault('cosmicOnly', True)
     bm = GenesetBenchmark(
         os.path.join(config['pyni']['projectdir'],'ni_benchmark'),
         genesets = mdb['H'],
         trueGenesets = {k:mdb['H'][k] for k in mdb['H'].keys() & trueGenesets},
-        netwink_kwargs = {'cosmicOnly': True}
+        netwink_kwargs = netwink_kwargs
     )
     restartProbs = np.arange(0,1.1,.1)
     kernel_kwargs_list = [

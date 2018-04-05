@@ -1,5 +1,7 @@
 # Pyni configuration
 import configparser, os
+import multiprocessing as mp
+
 configFileDirOptions = [
     '.',
     os.path.expanduser('~'),
@@ -10,7 +12,8 @@ configFileDirOptions = [
 config = configparser.ConfigParser()
 config['pyni'] = {
     'datadir': '{}/data'.format(os.path.dirname(__file__)), #TODO change to subdir pyni when making public
-    'projectdir': '/tmp'
+    'projectdir': '/tmp',
+    'threads': mp.cpu_count()
 }
 
 # Read configuration file

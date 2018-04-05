@@ -5,9 +5,13 @@
 Kernel base (interface) class and implementing classes.
 """
 
+from .config import config
 import random, numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
+import multiprocessing as mp
+import itertools as it
 
 # Kernels
 class Kernel():
@@ -64,12 +68,37 @@ class Kernel():
         if ax: ax.axvline(score,c=c)
         return score
 
-    def permutate_geneset_scores(self,geneset,numberOfPermutations=1000,seed=None,ax=None):
+    @staticmethod
+    def mp_score_geneset(geneset,diffusion):
+        """Static method for calculating geneset score
+
+        For multiprocessing use
+
+        Args:
+            geneset (pd.Series): boolean pd.Series indicating which scoresVector genes are in the geneset
+            scoresVector (matrix): vector with scores
+            computedMatrix (matrix): diffusion kernel
+
+        Returns:
+            score (float)
+        """
+        score = diffusion.T[geneset].sum()
+        return score
+    
+    def permutate_geneset_scores(self,geneset,numberOfPermutations=1000,seed=None,ax=None,multiprocessing=True):
         """
         Takes the length of the passed geneset, then makes `numberOfPermutations` genesets
         of the same length and calculates their scores. Returns a list with the scores.
 
         seed can be used to (re)set the random state
+
+        Args:
+            geneset (set): Set of genes.
+            numberOfPermutations (int): Number of similarly sized random geneset calculations.
+            seed (float): Random seed.
+            ax (plt.Axes): Ax to plot results on.
+            multiprocessing (bool): Use a pool of processes to calculate random scores.
+                Number of processes configurable in pyni config.
         """
         genesetLength = len(geneset)
         allGenes = set(self.netwink.get_nodes_series())
@@ -80,10 +109,20 @@ class Kernel():
         )
         try: scores = self.netwink.shelve[shelveKey]
         except KeyError:
-            scores = [
-                self.score_geneset(random.sample(allGenes,genesetLength))
-                for i in range(numberOfPermutations)
-            ]
+            if multiprocessing:
+                with mp.Pool(processes=int(config['pyni']['threads'])) as pool:
+                    scores = pool.starmap(
+                        Kernel.mp_score_geneset,
+                        zip(
+                            (self.netwink.get_nodes_series().isin(random.sample(allGenes,genesetLength)) for i in range(numberOfPermutations)),
+                            it.repeat(self.netwink.scoresVector @ self.computedMatrix)
+                        )
+                    )
+            else:
+                scores = [
+                    self.score_geneset(random.sample(allGenes,genesetLength))
+                    for i in range(numberOfPermutations)
+                ]
             self.netwink.shelve[shelveKey] = scores
             #logger.
         if ax:

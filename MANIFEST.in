@@ -1,2 +1,3 @@
 #data
-include pyni/data/*FI.txt
+include pyni/data/*.txt
+include pyni/data/*.tsv

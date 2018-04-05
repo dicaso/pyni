@@ -1,7 +1,7 @@
 from setuptools import setup
 
 package = "pyni"
-version = "0.0.5"
+version = "0.0.6"
 
 setup(name = package,
       version = version,
@@ -22,11 +22,14 @@ setup(name = package,
           'bidali'
       ],
       extras_require = {
-          'documentation': ['Sphinx']
+          'development': ['twine','Sphinx']
+          #twine for uploading to pypi, e.g.: twine upload --repository pypi dist/pyni-0.0.5.tar.gz
       },
       package_data = {
           'pyni': [
               'data/reactome_FI.txt',
+              'data/reactome_FI_filteredEdges.txt',
+              'data/cosmic_20180125.tsv'
           ]
       },
       include_package_data = True,
