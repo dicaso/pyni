@@ -1,7 +1,7 @@
 from setuptools import setup
 
 package = "pyni"
-version = "0.0.6"
+version = "0.0.7"
 
 setup(name = package,
       version = version,

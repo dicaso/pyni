@@ -178,7 +178,8 @@ class RestartRandomWalk(Kernel):
         restartProb = 0.1 if 'restartProb' not in self.spec else self.spec['restartProb']
         # Compute
         self.degreematrix = np.diag(np.array(self.netwink.admatrix.sum(axis=1)).flatten())
-        self.inversematrix = np.linalg.inv(self.degreematrix - ((1-restartProb)*self.netwink.admatrix))
+        #self.inversematrix = np.linalg.inv(self.degreematrix - ((1-restartProb)*self.netwink.admatrix))
+        self.inversematrix = np.linalg.pinv(self.degreematrix - ((1-restartProb)*self.netwink.admatrix)) #pseudo inverse
         self.restartmatrix = self.inversematrix*self.degreematrix # => op factor na probabiliteiten => geen kernel
         self.computedMatrix = self.restartmatrix #TODO possibly normalise so that row sums are 1
         return self
