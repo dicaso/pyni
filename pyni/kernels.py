@@ -96,7 +96,10 @@ class Kernel():
         )
         return ax
 
-    def plot_geneset_scores(self,geneset,filename=None,cmap='Greens',border_cmap=None,border_scores=None,penwidth=10,legend_title=None):
+    def plot_geneset_scores(
+            self,geneset,filename=None,cmap='Greens',border_cmap=None,
+            border_scores=None,penwidth=10,legend_title=None, dotprog = 'dot'
+    ):
         """Plot a geneset network with Graphiz
 
         Args:
@@ -167,12 +170,12 @@ class Kernel():
         
         # Graph output
         if filename:
-            dotgraph.write_svg(filename)
+            dotgraph.write_svg(filename, prog = dotprog)
         else:
             import io
             import matplotlib.image as mpimg
             from PIL import Image
-            png = io.BytesIO(dotgraph.create_png())
+            png = io.BytesIO(dotgraph.create_png(prog = dotprog))
             img = Image.open(png)
             #img.thumbnail(resize, Image.ANTIALIAS)
             img.show()
