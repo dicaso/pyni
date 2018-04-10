@@ -96,7 +96,7 @@ class Kernel():
         )
         return ax
 
-    def plot_geneset_scores(self,geneset,filename=None,cmap='hot_r',border_cmap='hot_r',border_scores=None,penwidth=10):
+    def plot_geneset_scores(self,geneset,filename=None,cmap='Greens',border_cmap=None,border_scores=None,penwidth=10,legend_title=None):
         """Plot a geneset network with Graphiz
 
         Args:
@@ -125,6 +125,14 @@ class Kernel():
         vmax = originalScores.max()
         norm = mpl.colors.Normalize(vmin=vmin,vmax=vmax)
         cmap = plt.get_cmap(cmap)
+        fill_color = lambda x: cmap(norm(x))
+        if border_scores is not None:
+            border_vmin = border_scores.min()
+            border_vmax = border_scores.max()
+            border_norm = mpl.colors.Normalize(vmin=border_vmin,vmax=border_vmax)
+            border_cmap = plt.get_cmap(border_cmap) if border_cmap else cmap
+            border_color = lambda x: border_cmap(border_norm(x))
+        else: border_color = fill_color
         # Setup graph
         subgraph = self.netwink.graph.subgraph(geneset)
         dotgraph = nx.drawing.nx_pydot.to_pydot(subgraph)
@@ -133,19 +141,19 @@ class Kernel():
             gene_loc = nodes.get_loc(gene)
             n.set_penwidth(10)
             n.set_style('filled')
-            fillcolortuple = cmap(norm(diffusedScores[gene_loc,0]))
+            fillcolortuple = fill_color(diffusedScores[gene_loc,0])
             n.set_fillcolor(rgb2hex(fillcolortuple))
-            n.set_color(rgb2hex(cmap(norm(originalScores[gene_loc]))))
+            n.set_color(rgb2hex(border_color(originalScores[gene_loc])))
             n.set_fontcolor(rgb2hex(labelcolor_matching_backgroundcolor(fillcolortuple)))
             
         # Create color legend
         graphlegend = pydot.Cluster(
-            graph_name="legend", label="Color legend", fontsize="15", color="blue",
-            style="filled", fillcolor="lightgrey", rankdir="TB"
+            graph_name="legend", label=legend_title if legend_title else "Color legend",
+            fontsize="15", color="blue", style="filled", fillcolor="lightgrey", rankdir="LR"
         )
         minnode = pydot.Node('min', label="Min: {:.2f}".format(vmin), style="filled",
                              fontcolor=rgb2hex(labelcolor_matching_backgroundcolor(cmap(norm(vmin)))),
-                             fillcolor=fillcolor=rgb2hex(cmap(norm(vmin))),
+                             fillcolor=rgb2hex(cmap(norm(vmin))),
                              shape="Mrecord", rank="same"
         )
         graphlegend.add_node(minnode)
@@ -154,7 +162,7 @@ class Kernel():
                              fillcolor=rgb2hex(cmap(norm(vmax))), shape="Mrecord", rank="same"
         )
         graphlegend.add_node(maxnode)
-        graphlegend.add_edge(pydot.Edge(minnode, maxnode, style="invis"))
+        #graphlegend.add_edge(pydot.Edge(minnode, maxnode, style="invis"))
         dotgraph.add_subgraph(graphlegend)
         
         # Graph output
