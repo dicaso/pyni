@@ -100,6 +100,18 @@ def main(netwink_kwargs={}):
     import matplotlib.pyplot as plt
     netwink_kwargs.setdefault('cosmicOnly', True)
     mdb = get_msigdb6()
+
+    # Select genesets that are big enough
+    nw = Netwink('/tmp/nw_checksize',**netwink_kwargs)
+    print('Original number of genesets',len(mdb['H']))
+    mdb['H'] = {
+        gs:mdb['H'][gs] for gs in mdb['H']
+                if len(set(mdb['H'][gs])&set(nw.get_nodes_series())) >= 15
+    }
+    print('Filtered number of genesets',len(mdb['H']))
+    del nw
+
+    # Select true geneset combinations
     trueGenesetCombinations = {('HALLMARK_E2F_TARGETS', 'HALLMARK_G2M_CHECKPOINT')}
     trueGenesetCombinations.update({tuple(random.sample(mdb['H'].keys(),2)) for i in range(5)})
     trueGenesetResults = {}
@@ -112,7 +124,8 @@ def main(netwink_kwargs={}):
             trueGenesets = {k:mdb['H'][k] for k in mdb['H'].keys() & trueGenesets},
             netwink_kwargs = netwink_kwargs
         )
-        restartProbs = np.arange(0,.7,.2)
+        # Set restart probabilities
+        restartProbs = (np.logspace(0,1,5)/-10)+1.1
         kernel_kwargs_list = [
           {'restartProb':i} for i in restartProbs
         ]
@@ -138,7 +151,8 @@ def main(netwink_kwargs={}):
                     label = '{} - {}'.format(gs,method)
                 )
         ax1.legend()
-        ax1.set_title('Probability comparison')
+        ax1.invert_xaxis()
+        ax1.set_title('Probability comparison - {}'.format(trueGenesetsTuple))
         ax1.set_xlabel('Random restart probability')
         means_rankcomparisons = pd.DataFrame(pd.concat([df.mean() for df in rankcomparisons]),columns=['rankMean'])
         means_rankcomparisons['restartProb'] = np.repeat(restartProbs, 4)
@@ -154,7 +168,8 @@ def main(netwink_kwargs={}):
                     label = '{} - {}'.format(gs,method)
                 )
         ax2.legend()
-        ax2.set_title('Rank comparison')
+        ax2.invert_xaxis()
+        ax2.set_title('Rank comparison - {}'.format(trueGenesetsTuple))
         ax2.set_xlabel('Random restart probability')
         bm.rankcomparisons = means_rankcomparisons
         bm.probcomparisons = means_probcomparisons

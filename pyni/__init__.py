@@ -110,8 +110,18 @@ class Netwink():
         Load weights such as context relevant correlation values
 
         TODO what to do with NA weights?
+
+        admatrix gets replaced with weighted admatrix => kernels should
+          be calculated only after applying the weights
         """
         self.weights = weights
+        self.admatrix_unweighted = self.admatrix
+        self.admatrix = np.multiply(
+            self.admatrix,
+            self.weights.fillna(self.weights.mean().mean()).as_matrix()
+        )
+        if self.associated_kernels:
+            print('associated kernels present, you should remove them to use the weighted kernel instead')
 
     def load_correlations(self,nodesCorrelationData,method='pearson',expSmoothening=1,**kwargs):
         """

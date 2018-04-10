@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import multiprocessing as mp
 import itertools as it
+import networkx as nx
 
 # Kernels
 class Kernel():
@@ -84,7 +85,106 @@ class Kernel():
         """
         score = diffusion.T[geneset].sum()
         return score
-    
+
+    def plot_scores_diffusion_scatter(self):
+        """Scatter plot of original scores and diffused scores
+        """
+        fig, ax = plt.subplots()
+        ax.scatter(
+            np.array(self.netwink.scoresVector[:,None]),
+            np.array((self.netwink.scoresVector @ self.computedMatrix).T)
+        )
+        return ax
+
+    def plot_geneset_scores(self,geneset,filename=None,cmap='hot_r',border_cmap='hot_r',border_scores=None,penwidth=10):
+        """Plot a geneset network with Graphiz
+
+        Args:
+            geneset (set): Set of genes that will be plotted.
+            filename (str): filename path, should end in '.svg'.
+            cmap (str): matplotlib colormap name.
+            border_cmap (str): colormap for the border.
+            border_scores (pd.Series): Instead of the original scores, 
+                put in a different metric for border color.
+            penwidth (int): the size of the border line around the gene.
+
+        Todo:
+            * add gradient legend -> dot fillcolor="orange:yellow"
+              or generating color bar legend with matplotlib and then referencing that image
+        """
+        # Collect data
+        nodes =  pd.Index(self.netwink.get_nodes_series())
+        originalScores = self.netwink.scoresVector
+        diffusedScores = (originalScores @ self.computedMatrix).T
+        # Setup colors
+        import pydot
+        import matplotlib as mpl
+        from matplotlib.colors import rgb2hex
+        from bidali.visualizations import labelcolor_matching_backgroundcolor
+        vmin = originalScores.min()
+        vmax = originalScores.max()
+        norm = mpl.colors.Normalize(vmin=vmin,vmax=vmax)
+        cmap = plt.get_cmap(cmap)
+        # Setup graph
+        subgraph = self.netwink.graph.subgraph(geneset)
+        dotgraph = nx.drawing.nx_pydot.to_pydot(subgraph)
+        for n in dotgraph.get_nodes():
+            gene = n.get_name()
+            gene_loc = nodes.get_loc(gene)
+            n.set_penwidth(10)
+            n.set_style('filled')
+            fillcolortuple = cmap(norm(diffusedScores[gene_loc,0]))
+            n.set_fillcolor(rgb2hex(fillcolortuple))
+            n.set_color(rgb2hex(cmap(norm(originalScores[gene_loc]))))
+            n.set_fontcolor(rgb2hex(labelcolor_matching_backgroundcolor(fillcolortuple)))
+            
+        # Create color legend
+        graphlegend = pydot.Cluster(
+            graph_name="legend", label="Color legend", fontsize="15", color="blue",
+            style="filled", fillcolor="lightgrey", rankdir="TB"
+        )
+        minnode = pydot.Node('min', label="Min: {:.2f}".format(vmin), style="filled",
+                             fontcolor=rgb2hex(labelcolor_matching_backgroundcolor(cmap(norm(vmin)))),
+                             fillcolor=fillcolor=rgb2hex(cmap(norm(vmin))),
+                             shape="Mrecord", rank="same"
+        )
+        graphlegend.add_node(minnode)
+        maxnode = pydot.Node('max', label="Max: {:.2f}".format(vmax), style="filled",
+                             fontcolor=rgb2hex(labelcolor_matching_backgroundcolor(cmap(norm(vmax)))),
+                             fillcolor=rgb2hex(cmap(norm(vmax))), shape="Mrecord", rank="same"
+        )
+        graphlegend.add_node(maxnode)
+        graphlegend.add_edge(pydot.Edge(minnode, maxnode, style="invis"))
+        dotgraph.add_subgraph(graphlegend)
+        
+        # Graph output
+        if filename:
+            dotgraph.write_svg(filename)
+        else:
+            import io
+            import matplotlib.image as mpimg
+            from PIL import Image
+            png = io.BytesIO(dotgraph.create_png())
+            img = Image.open(png)
+            #img.thumbnail(resize, Image.ANTIALIAS)
+            img.show()
+            #imgplot = plt.imshow(mpimg.imread(png))
+            #imgplot.get_figure().axes[0].axis('off')
+            #return imgplot
+
+    def plot_gene_neighbourhood(self,gene,depth=2,**kwargs):
+        """Plot network centered around a gene
+
+        Args:
+            gene (str): Gene name.
+            depth (int): Connection distance with gene.
+        """
+        geneset = {gene} if isinstance(gene, str) else set(gene)
+        for level in range(depth):
+            for g in geneset.copy():
+                geneset.update(set(self.netwink.graph.neighbors(g)))
+        self.plot_geneset_scores(geneset,**kwargs)
+        
     def permutate_geneset_scores(self,geneset,numberOfPermutations=1000,seed=None,ax=None,multiprocessing=True):
         """
         Takes the length of the passed geneset, then makes `numberOfPermutations` genesets
@@ -181,5 +281,7 @@ class RestartRandomWalk(Kernel):
         #self.inversematrix = np.linalg.inv(self.degreematrix - ((1-restartProb)*self.netwink.admatrix))
         self.inversematrix = np.linalg.pinv(self.degreematrix - ((1-restartProb)*self.netwink.admatrix)) #pseudo inverse
         self.restartmatrix = self.inversematrix*self.degreematrix # => op factor na probabiliteiten => geen kernel
-        self.computedMatrix = self.restartmatrix #TODO possibly normalise so that row sums are 1
+        # Normalize row sums to 1 => this way each row shows how much a gene keeps from its score and gets from other genes' scores
+        self.restartmatrix = self.restartmatrix / self.restartmatrix.sum(axis=1) 
+        self.computedMatrix = self.restartmatrix
         return self
