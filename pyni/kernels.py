@@ -45,7 +45,7 @@ class Kernel():
         """
         raise NotImplementedError('implement in inheriting classes')
 
-    def score_geneset(self,geneset,method='vector',ax=None,c='r'):
+    def score_geneset(self,geneset,method='vector',signedDiffusion=False,ax=None,c='r'):
         """
         Calculate the sum of a geneset.
         netwink.apply_gene_scores(genescores) has to been run before
@@ -55,9 +55,15 @@ class Kernel():
         elementwise multpication with kernel computed matrix
         sum defines the subnetwork, but permutation test is needed to test how relevant
         its sum is, compared to scores randomly same-sized genesets get.
+
+        Todo:
+            * use correlation signs for multiplying when scores have relevant signs
+            * check passing signedDiffusion upstream
         """
         if method == 'vector':
-            diffusion =  self.netwink.scoresVector @ self.computedMatrix
+            if signedDiffusion:
+                diffusion =  self.netwink.scoresVector @ np.multiply(self.computedMatrix,self.netwink.correlationSigns)
+            else: diffusion =  self.netwink.scoresVector @ self.computedMatrix
             #score matrix repeat tot size computed matrix, nadien col sums resultaat (diffusie matrix moet wel row sums 1 hebben)
             #genormaliseerde correlatie waarden als gewichten
             score = diffusion.T[self.netwink.get_nodes_series().isin(geneset)].sum()
@@ -97,8 +103,10 @@ class Kernel():
         return ax
 
     def plot_geneset_scores(
-            self,geneset,filename=None,cmap='Greens',border_cmap=None,
-            border_scores=None,penwidth=10,legend_title=None, dotprog = 'dot'
+            self, geneset, filename=None, cmap='Greens', border_cmap=None,
+            border_scores=None, penwidth=10, legend_title=None,
+            color_edges = True, edge_cmap='RdGy', edge_filter=.2,
+            dotprog = 'dot'
     ):
         """Plot a geneset network with Graphiz
 
@@ -110,10 +118,17 @@ class Kernel():
             border_scores (pd.Series): Instead of the original scores, 
                 put in a different metric for border color.
             penwidth (int): the size of the border line around the gene.
+            legend_title (str): Title for legend.
+            color_edges (bool): Use netwink correlation data for coloring edges.
+            edge_cmap (str): If color_edges, which cmap to use.
+            edge_filter (float): If color_edges, edges with absolute correlation
+                smaller than edge_filter will be filtered. Allows to make more
+                comprehensible graphs.
 
         Todo:
             * add gradient legend -> dot fillcolor="orange:yellow"
               or generating color bar legend with matplotlib and then referencing that image
+            * look into other (python) graph visualizers such as igraph, graph-tool
         """
         # Collect data
         nodes =  pd.Index(self.netwink.get_nodes_series())
@@ -148,6 +163,20 @@ class Kernel():
             n.set_fillcolor(rgb2hex(fillcolortuple))
             n.set_color(rgb2hex(border_color(originalScores[gene_loc])))
             n.set_fontcolor(rgb2hex(labelcolor_matching_backgroundcolor(fillcolortuple)))
+            # If there are negative scores, set different shape
+            if diffusedScores[gene_loc,0] < 0:
+                n.set_shape('diamond')
+        if color_edges:
+            for e in dotgraph.get_edges():
+                edge_norm = mpl.colors.Normalize(vmin=-1,vmax=1)
+                edge_cmap = plt.get_cmap(edge_cmap)
+                edge_color = lambda x: edge_cmap(edge_norm(x))
+                corr = self.netwink.correlations[e.get_source()][e.get_destination()]
+                if abs(corr) < edge_filter:
+                    dotgraph.del_edge(e.get_source(),e.get_destination())
+                else:
+                    e.set_color(rgb2hex(edge_color(corr)))
+                    if corr < 0: e.set_style('dashed')
             
         # Create color legend
         graphlegend = pydot.Cluster(
@@ -182,6 +211,8 @@ class Kernel():
             #imgplot = plt.imshow(mpimg.imread(png))
             #imgplot.get_figure().axes[0].axis('off')
             #return imgplot
+            
+        return dotgraph
 
     def plot_gene_neighbourhood(self,gene,depth=2,**kwargs):
         """Plot network centered around a gene
@@ -194,7 +225,7 @@ class Kernel():
         for level in range(depth):
             for g in geneset.copy():
                 geneset.update(set(self.netwink.graph.neighbors(g)))
-        self.plot_geneset_scores(geneset,**kwargs)
+        return self.plot_geneset_scores(geneset,**kwargs)
         
     def permutate_geneset_scores(self,geneset,numberOfPermutations=1000,seed=None,ax=None,multiprocessing=True):
         """

@@ -106,13 +106,16 @@ class Netwink():
         self.weights = np.ones(self.admatrix.shape)
 
     def load_weights(self,weights):
-        """
-        Load weights such as context relevant correlation values
-
-        TODO what to do with NA weights?
+        """Load weights such as context relevant correlation values
 
         admatrix gets replaced with weighted admatrix => kernels should
           be calculated only after applying the weights
+
+        Args:
+            weights (pd.DataFrame): Dataframe of weights to use.
+
+        Todo:
+            * what to do with NA weights?
         """
         self.weights = weights
         self.admatrix_unweighted = self.admatrix
@@ -123,28 +126,32 @@ class Netwink():
         if self.associated_kernels:
             print('associated kernels present, you should remove them to use the weighted kernel instead')
 
-    def load_correlations(self,nodesCorrelationData,method='pearson',expSmoothening=1,**kwargs):
-        """
-        Calculate correlations based on the data in nodesCorrelationData pd.DataFrame
+    def load_correlations(self,nodesCorrelationData,method='pearson',expSmoothening=1,calculate=True,useAsWeights=True,**kwargs):
+        """Calculate correlations based on the data in nodesCorrelationData pd.DataFrame
         and load them as weights
 
-        if nodesCorrelationData is not pd.DataFrame, it is assumed to be a filename,
-        that will be used to load the DataFrame with pd.read_csv and kwargs provided.
-
-        correlation method => any method accepted by DataFrame.corr (pearson, kendall, spearman)
-
-        expSmoothening => all corr values are transformed to the power of expSmoothening
-          values furhter away from 1 will go exponentially towards 0 with higher expSmoothening value
+        Args:
+            nodesCorrelationData (pd.DataFrame): If nodesCorrelationData is not pd.DataFrame, 
+                it is assumed to be a filename, that will be used to load the DataFrame with 
+                pd.read_csv and kwargs provided.
+            method (str): Correlation method, any method accepted by DataFrame.corr (pearson, kendall, spearman).
+            expSmoothening (int): All corr values are transformed to the power of expSmoothening
+                values furhter away from 1 will go exponentially towards 0 with higher expSmoothening value.
+            calculate (bool): If false, correlations are considered precalculated in nodesCorrelationData.
+                This is useful if you are working many times with the same network data in different netwink objects.
+            useAsWeights (bool): Use the correlations as weights, otherwise will only be used to color edges.
         """
         if type(nodesCorrelationData) != pd.DataFrame:
             nodesCorrelationData = pd.read_csv(nodesCorrelationData,**kwargs)
-        # Filter non-node data
-        nodesCorrelationData = nodesCorrelationData.reindex(self.get_nodes_series())
-        correlations = nodesCorrelationData.T.corr(method=method)
-        self.correlationSigns = np.sign(correlations)
-        weights = correlations.abs() ** expSmoothening
-        self.load_weights(weights)
-        
+        if calculate:
+            # Filter non-node data
+            nodesCorrelationData = nodesCorrelationData.reindex(self.get_nodes_series())
+            self.correlations = nodesCorrelationData.T.corr(method=method)
+        else: self.correlations = nodesCorrelationData
+        self.correlationSigns = np.sign(self.correlations)
+        if useAsWeights:
+            weights = self.correlations.abs() ** expSmoothening
+            self.load_weights(weights)
 
     def get_nodes_series(self):
         return pd.Series(self.graph.nodes)

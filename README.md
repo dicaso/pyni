@@ -4,6 +4,8 @@
 ## Requirements
 
  - https://virtualenvwrapper.readthedocs.io/en/latest/
+ - Graphviz
+   - Mac OS X => brew reinstall graphviz --with-gts
 
 ## Installation
 
