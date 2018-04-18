@@ -20,7 +20,7 @@ setup(name = package,
           'requests',
           'networkx',
           'pydot',
-          'bidali'
+          'bidali[retro]'
       ],
       extras_require = {
           'development': ['twine','Sphinx']
@@ -29,8 +29,7 @@ setup(name = package,
       package_data = {
           'pyni': [
               'data/reactome_FI.txt',
-              'data/reactome_FI_filteredEdges.txt',
-              'data/cosmic_20180125.tsv'
+              'data/reactome_FI_filteredEdges.txt'
           ]
       },
       include_package_data = True,

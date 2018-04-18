@@ -103,10 +103,10 @@ class Kernel():
         return ax
 
     def plot_geneset_scores(
-            self, geneset, filename=None, cmap='Greens', border_cmap=None,
-            border_scores=None, penwidth=10, legend_title=None,
-            color_edges = True, edge_cmap='RdGy', edge_filter=.2,
-            dotprog = 'dot'
+            self, geneset, filename=None, cmap='Greens', vmin=None, vmax=None,
+            border_cmap=None, border_scores=None, penwidth=10, legend_title=None,
+            color_edges = True, edge_cmap='RdGy', edge_filter=.2, makeColorbars=False,
+            colorbar_title=None, dotprog = 'dot'
     ):
         """Plot a geneset network with Graphiz
 
@@ -114,6 +114,10 @@ class Kernel():
             geneset (set): Set of genes that will be plotted.
             filename (str): filename path, should end in '.svg'.
             cmap (str): matplotlib colormap name.
+            vmin (float): minimum value for cmap normalization.
+                lower scores will not be distinguishable.
+            vmax (float): maximum value for cmap normalization, 
+                higher scores will not be distinguishable.
             border_cmap (str): colormap for the border.
             border_scores (pd.Series): Instead of the original scores, 
                 put in a different metric for border color.
@@ -124,6 +128,7 @@ class Kernel():
             edge_filter (float): If color_edges, edges with absolute correlation
                 smaller than edge_filter will be filtered. Allows to make more
                 comprehensible graphs.
+            makeColorbars (bool): If true, make matplotlib figures with the colorbars used.
 
         Todo:
             * add gradient legend -> dot fillcolor="orange:yellow"
@@ -139,11 +144,16 @@ class Kernel():
         import matplotlib as mpl
         from matplotlib.colors import rgb2hex
         from bidali.visualizations import labelcolor_matching_backgroundcolor
-        vmin = originalScores.min()
-        vmax = originalScores.max()
+        vmin = vmin if vmin else originalScores.min()
+        vmax = vmax if vmax else originalScores.max()
         norm = mpl.colors.Normalize(vmin=vmin,vmax=vmax)
         cmap = plt.get_cmap(cmap)
         fill_color = lambda x: cmap(norm(x))
+        if makeColorbars:
+            # Reference: https://matplotlib.org/examples/api/colorbar_only.html
+            cbarfig, cbax = plt.subplots(figsize=(5,2))
+            mpl.colorbar.ColorbarBase(cbax, cmap=cmap, norm=norm, orientation='horizontal')
+            cbax.set_xlabel(colorbar_title or 'Center score colorbar')
         if border_scores is not None:
             border_vmin = border_scores.min()
             border_vmax = border_scores.max()

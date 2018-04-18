@@ -23,9 +23,17 @@ class Netwink():
     """
     Ninkling's starting class.
     Does the setup for all down stream network analyses
+
+    Args:
+        savedir (str): The save location of the network analysis.
+        name (str): The name for the analysis.
+        loglevel (str): netwink object log level.
+        subsetOnly (bool or set): If true and not a set, subsets to cosmic census genes,
+            otherwise it should be a set of genes to subset to.
+        fullInit (bool): Fully initialize the netwink object.
     """
 
-    def __init__(self,savedir,name=None,loglevel='DEBUG',cosmicOnly=True,fullInit=True):
+    def __init__(self,savedir,name=None,loglevel='DEBUG',subsetOnly=True,fullInit=True):
         self.location = savedir
         self.name = name if name else os.path.basename(savedir)
         self.logger = logging.Logger(self.name,level=loglevel)
@@ -34,7 +42,7 @@ class Netwink():
             self.setup_logging(loglevel)
             self.shelve = shelve.open(os.path.join(self.location,'distrostore'))
             self.set_annotation()
-            self.load_network(cosmicOnly)
+            self.load_network(subsetOnly)
             self.associated_kernels = {}
             self.logger.debug('%s fully created',self)
         else: self.logger.warning('%s created but no network loaded',self)
@@ -72,10 +80,18 @@ class Netwink():
             self.annotation['network_id'] = self.annotation['Gene stable ID'].apply(lambda x: int(x.replace('ENSG','')))
             self.annotation.to_csv(self.annotationFile,sep='\t')
 
-    def load_network(self,cosmicOnly=False):
-        # if complexes in network -> condir complex as its own entity?
-        # for brute force analysis best not
-        # TODO how are we going to deal with it?
+    def load_network(self,subsetOnly=False):
+        """Loads the network
+
+        Args:
+            subsetOnly (bool or set): If true, only loads Sanger Cosmic census genes. 
+                If a non empty set subsets to that set of genes.
+
+        Todos:
+            * if complexes in network -> condir complex as its own entity?
+              for brute force analysis best not (e.g. MYC, MYCN -> pros and cons)
+            * how are we going to deal with it?
+        """
         self.networkFile = os.path.join(self.location, 'reactome_FI_filteredEdges.tsv')
         if os.path.exists(self.networkFile):
             self.networkgenes = pd.read_table(self.networkFile)
@@ -90,11 +106,12 @@ class Netwink():
         # Construct network
         self.graph = nx.Graph()
         self.networkgenes.T.apply(lambda x: self.graph.add_edge(x['Gene1'],x['Gene2']))
-        if cosmicOnly:
-            cosmicgenes = set(pd.read_table(
-                os.path.join(config['pyni']['datadir'],'cosmic_20180125.tsv')
-            )['Gene Symbol'])
-            self.graph = self.graph.subgraph(cosmicgenes)
+        if subsetOnly:
+            if isinstance(subsetOnly,bool):
+                from bidali.LSD.dealer.external import sanger
+                subsetgenes = set(sanger.get_census().index)
+            else: subsetgenes = subsetOnly
+            self.graph = self.graph.subgraph(subsetgenes)
             components = {
                 comp.number_of_nodes():comp
                 for comp in nx.connected_component_subgraphs(self.graph)
