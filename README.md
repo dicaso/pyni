@@ -5,7 +5,7 @@
 
  - https://virtualenvwrapper.readthedocs.io/en/latest/
  - Graphviz
-   - Mac OS X => brew reinstall graphviz --with-gts
+   - Mac OS X => brew reinstall graphviz --with-gts --with-pango --with-librsvg
 
 ## Installation
 
@@ -14,9 +14,10 @@
 ## Get started for development
 
     git clone https://github.ugent.be/cvneste/pyni.git && cd pyni
+    PYNIDIR=$(pwd)
     git checkout -b $USER
-    mkvirtualenv pyni
-    pip install -e .     # installs package linked to the git repo
+    mkvirtualenv -a $PYNIDIR -i ipython -i twine -i Sphinx \
+                 -r $PYNIDIR/requirements.txt pyni
     python setup.py test # runs all the tests
 
 ### Configuration file

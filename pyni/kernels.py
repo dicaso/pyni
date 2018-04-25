@@ -76,6 +76,36 @@ class Kernel():
         return score
 
     @staticmethod
+    def mp_diffuse_score_geneset(geneset,scores,computedMatrix,nperm=1000):
+        """Static method for calculating diffused geneset score.
+        Opposing to mp_score_geneset this function expects the original computedMatrix
+        and then calculates diffused scores.
+
+        Ready for multiprocessing use.
+
+        Args:
+            geneset (pd.Series): boolean pd.Series indicating which scoresVector genes are in the geneset
+            scoresVector (matrix): vector with scores
+            computedMatrix (matrix): diffusion kernel
+            nperm (int): If nperm, calculate random permutations of scoresVector
+
+        Returns:
+            score (float)
+        """
+        diffusion = scores @ computedMatrix
+        score = diffusion.T[geneset].sum()
+        if nperm:
+            randomScoresVector = scores.copy()
+            random_scores = [
+                (randomScoresVector @ computedMatrix).T[geneset].sum()
+                for i in range(nperm)
+                # random shuffling for every iteration as a side effect:
+                if np.random.shuffle(randomScoresVector) or True
+            ]
+            return score, random_scores
+        else: return score
+
+    @staticmethod
     def mp_score_geneset(geneset,diffusion):
         """Static method for calculating geneset score
 
@@ -106,7 +136,7 @@ class Kernel():
             self, geneset, filename=None, cmap='Greens', vmin=None, vmax=None,
             border_cmap=None, border_scores=None, penwidth=10, legend_title=None,
             color_edges = True, edge_cmap='RdGy', edge_filter=.2, makeColorbars=False,
-            colorbar_title=None, dotprog = 'dot'
+            colorbar_title=None, border_colorbar_title=None, dotprog = 'dot'
     ):
         """Plot a geneset network with Graphiz
 
@@ -141,7 +171,7 @@ class Kernel():
         diffusedScores = (originalScores @ self.computedMatrix).T
         # Setup colors
         import pydot
-        import matplotlib as mpl
+        import matplotlib as mpl, tempfile
         from matplotlib.colors import rgb2hex
         from bidali.visualizations import labelcolor_matching_backgroundcolor
         vmin = vmin if vmin else originalScores.min()
@@ -149,11 +179,6 @@ class Kernel():
         norm = mpl.colors.Normalize(vmin=vmin,vmax=vmax)
         cmap = plt.get_cmap(cmap)
         fill_color = lambda x: cmap(norm(x))
-        if makeColorbars:
-            # Reference: https://matplotlib.org/examples/api/colorbar_only.html
-            cbarfig, cbax = plt.subplots(figsize=(5,2))
-            mpl.colorbar.ColorbarBase(cbax, cmap=cmap, norm=norm, orientation='horizontal')
-            cbax.set_xlabel(colorbar_title or 'Center score colorbar')
         if border_scores is not None:
             border_vmin = border_scores.min()
             border_vmax = border_scores.max()
@@ -161,6 +186,31 @@ class Kernel():
             border_cmap = plt.get_cmap(border_cmap) if border_cmap else cmap
             border_color = lambda x: border_cmap(border_norm(x))
         else: border_color = fill_color
+        if makeColorbars:
+            # Reference: https://matplotlib.org/examples/api/colorbar_only.html
+            cbarfig, cbax = plt.subplots(
+                nrows=1 if border_scores is None else 2, ncols=1, figsize=(5,2)
+            )
+            cbarfig.tight_layout()
+            if border_scores is not None:
+                cbax, cboax = cbax
+                mpl.colorbar.ColorbarBase(
+                    cboax, cmap=border_cmap, norm=border_norm, orientation='horizontal'
+                )
+                cboax.set_xlabel(border_colorbar_title or 'Border score colorbar')
+            mpl.colorbar.ColorbarBase(cbax, cmap=cmap, norm=norm, orientation='horizontal')
+            cbax.set_xlabel(colorbar_title or 'Center score colorbar')
+            # Write out to tempfile
+            tf = tempfile.NamedTemporaryFile(suffix='.png')
+            print(tf.name)
+            tf.close()
+            cbarfig.savefig(tf.name)
+            graphlegend = pydot.Cluster(
+                graph_name="legend", label=legend_title if legend_title else "Color legend",
+                fontsize="15", color="blue", style="filled", fillcolor="lightgrey", rankdir="LR"
+            )
+            colorbarnode = pydot.Node('colorbars', label='', shape="box", image=tf.name)
+            graphlegend.add_node(colorbarnode)
         # Setup graph
         subgraph = self.netwink.graph.subgraph(geneset)
         dotgraph = nx.drawing.nx_pydot.to_pydot(subgraph)
@@ -189,21 +239,21 @@ class Kernel():
                     if corr < 0: e.set_style('dashed')
             
         # Create color legend
-        graphlegend = pydot.Cluster(
-            graph_name="legend", label=legend_title if legend_title else "Color legend",
-            fontsize="15", color="blue", style="filled", fillcolor="lightgrey", rankdir="LR"
-        )
-        minnode = pydot.Node('min', label="Min: {:.2f}".format(vmin), style="filled",
-                             fontcolor=rgb2hex(labelcolor_matching_backgroundcolor(cmap(norm(vmin)))),
-                             fillcolor=rgb2hex(cmap(norm(vmin))),
-                             shape="Mrecord", rank="same"
-        )
-        graphlegend.add_node(minnode)
-        maxnode = pydot.Node('max', label="Max: {:.2f}".format(vmax), style="filled",
-                             fontcolor=rgb2hex(labelcolor_matching_backgroundcolor(cmap(norm(vmax)))),
-                             fillcolor=rgb2hex(cmap(norm(vmax))), shape="Mrecord", rank="same"
-        )
-        graphlegend.add_node(maxnode)
+        #graphlegend = pydot.Cluster(
+        #    graph_name="legend", label=legend_title if legend_title else "Color legend",
+        #    fontsize="15", color="blue", style="filled", fillcolor="lightgrey", rankdir="LR"
+        #)
+        #minnode = pydot.Node('min', label="Min: {:.2f}".format(vmin), style="filled",
+        #                     fontcolor=rgb2hex(labelcolor_matching_backgroundcolor(cmap(norm(vmin)))),
+        #                     fillcolor=rgb2hex(cmap(norm(vmin))),
+        #                     shape="Mrecord", rank="same"
+        #)
+        #graphlegend.add_node(minnode)
+        #maxnode = pydot.Node('max', label="Max: {:.2f}".format(vmax), style="filled",
+        #                     fontcolor=rgb2hex(labelcolor_matching_backgroundcolor(cmap(norm(vmax)))),
+        #                     fillcolor=rgb2hex(cmap(norm(vmax))), shape="Mrecord", rank="same"
+        #)
+        #graphlegend.add_node(maxnode)
         #graphlegend.add_edge(pydot.Edge(minnode, maxnode, style="invis"))
         dotgraph.add_subgraph(graphlegend)
         
@@ -280,7 +330,46 @@ class Kernel():
         if ax:
             sns.distplot(scores,ax=ax)
         return scores
-        
+
+    def permutate_unique_geneset_scores(self,geneset,numberOfPermutations=1000,seed=None,ax=None,multiprocessing=False):
+        """
+        Randomizes the scores for `numberOfPermutations` and calculates the null distribution of 
+        scores for the specific geneset.
+
+        seed can be used to (re)set the random state
+
+        Args:
+            geneset (set): Set of genes.
+            numberOfPermutations (int): Number of similarly sized random geneset calculations.
+            seed (float): Random seed.
+            ax (plt.Axes): Ax to plot results on.
+            multiprocessing (bool): Use a pool of processes to calculate random scores.
+                Number of processes configurable in pyni config.
+        """
+        genesetHash = hash(str(sorted(geneset)))
+        allGenes = set(self.netwink.get_nodes_series())
+        if seed: random.seed(seed)
+        shelveKey = 'Geneset {} - permutations {} - seed {} - kernel hash {}'.format(
+            genesetHash,numberOfPermutations,seed,hash(self)
+            #optionally also include a hash of the netwink nodes+edges to be sure it did not change
+        )
+        try: scores = self.netwink.shelve[shelveKey]
+        except KeyError:
+            if multiprocessing:
+                raise NotImplementedError #TODO refactor code for more optimal use of multiprocessing
+            else:
+                score, scores = Kernel.mp_diffuse_score_geneset(
+                    self.netwink.get_nodes_series().isin(geneset),
+                    self.netwink.scoresVector,
+                    self.computedMatrix,
+                    nperm=numberOfPermutations
+                )
+            self.netwink.shelve[shelveKey] = scores
+            #logger.
+        if ax:
+            sns.distplot(scores,ax=ax)
+        return scores
+
     def visualize(self):
         plt.matshow(self.computedMatrix)
 

@@ -267,7 +267,7 @@ class Netwink():
         for gs in genesets:
             geneset_scores[gs] = kernel.score_geneset(genesets[gs])
             geneset_probs[gs] = (pd.Series(
-                kernel.permutate_geneset_scores(genesets[gs],numberOfPermutations=nperm)
+                kernel.permutate_unique_geneset_scores(genesets[gs],numberOfPermutations=nperm)
             ) > geneset_scores[gs]).mean()
         results = pd.DataFrame(
             {'score': geneset_scores, 'prob': geneset_probs, 'size': geneset_sizes, 'osize': geneset_originalSizes},
