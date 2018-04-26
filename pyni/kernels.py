@@ -232,12 +232,16 @@ class Kernel():
                 edge_norm = mpl.colors.Normalize(vmin=-1,vmax=1)
                 edge_cmap = plt.get_cmap(edge_cmap)
                 edge_color = lambda x: edge_cmap(edge_norm(x))
-                corr = self.netwink.correlations[e.get_source()][e.get_destination()]
-                if abs(corr) < edge_filter:
-                    dotgraph.del_edge(e.get_source(),e.get_destination())
-                else:
-                    e.set_color(rgb2hex(edge_color(corr)))
-                    if corr < 0: e.set_style('dashed')
+                try:
+                    corr = self.netwink.correlations[e.get_source()][e.get_destination()]
+                    if abs(corr) < edge_filter:
+                        dotgraph.del_edge(e.get_source(),e.get_destination())
+                    else:
+                        e.set_color(rgb2hex(edge_color(corr)))
+                        if corr < 0: e.set_style('dashed')
+                except KeyError:
+                    # No correlation info as source or target not in expression data
+                    e.set_style('dotted')
             
         # Create color legend
         #graphlegend = pydot.Cluster(
