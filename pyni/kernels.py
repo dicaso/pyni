@@ -205,6 +205,7 @@ class Kernel():
             print(tf.name)
             tf.close()
             cbarfig.savefig(tf.name)
+            plt.close(cbarfig) #closing figure as downstream only file ref needed
             graphlegend = pydot.Cluster(
                 graph_name="legend", label=legend_title if legend_title else "Color legend",
                 fontsize="15", color="blue", style="filled", fillcolor="lightgrey", rankdir="LR"
