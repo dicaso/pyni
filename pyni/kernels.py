@@ -185,7 +185,8 @@ class Kernel():
             border_norm = mpl.colors.Normalize(vmin=border_vmin,vmax=border_vmax)
             border_cmap = plt.get_cmap(border_cmap) if border_cmap else cmap
             border_color = lambda x: border_cmap(border_norm(x))
-        else: border_color = fill_color
+        else:
+            border_color = fill_color
         if makeColorbars:
             # Reference: https://matplotlib.org/examples/api/colorbar_only.html
             cbarfig, cbax = plt.subplots(
@@ -222,7 +223,11 @@ class Kernel():
             n.set_style('filled')
             fillcolortuple = fill_color(diffusedScores[gene_loc,0])
             n.set_fillcolor(rgb2hex(fillcolortuple))
-            n.set_color(rgb2hex(border_color(originalScores[gene_loc])))
+            n.set_color(rgb2hex(
+                border_color(
+                    (originalScores if border_scores is None else border_scores)[gene_loc]
+                )
+            ))
             n.set_fontcolor(rgb2hex(labelcolor_matching_backgroundcolor(fillcolortuple)))
             # If there are negative scores, set different shape
             if diffusedScores[gene_loc,0] < 0:
@@ -264,7 +269,12 @@ class Kernel():
         
         # Graph output
         if filename:
-            dotgraph.write_svg(filename, prog = dotprog)
+            if filename.endswith('.svg'):
+                dotgraph.write_svg(filename, prog = dotprog)
+            elif filename.endswith('.png'):
+                dotgraph.write_png(filename, prog = dotprog)
+            else:
+                raise TypeError('Only svg or png file types can be written.',filename)
         else:
             import io
             import matplotlib.image as mpimg
