@@ -122,15 +122,37 @@ class Kernel():
         score = diffusion.T[geneset].sum()
         return score
 
-    def plot_scores_diffusion_scatter(self):
+    def plot_scores_diffusion_scatter(self,diffusionDiff=False,returnDiff=False,annotate=0.05,arrowColor='red',figsize=(7,7)):
         """Scatter plot of original scores and diffused scores
+
+        Args:
+            diffusionDiff (bool): Show the difference with original score
+                after diffusion, instead of the diffused score.
+            annotate (float): Float between 0-1 indicating upper and lower 
+                quantile of diffusion difference that will be annotated.
+            arrowColor (color): Color of the annotation arrows.
+            figsize (float,float): Figure size passed to plt.subplots.
         """
-        fig, ax = plt.subplots()
-        ax.scatter(
-            np.array(self.netwink.scoresVector[:,None]),
-            np.array((self.netwink.scoresVector @ self.computedMatrix).T)
-        )
-        return ax
+        fig, ax = plt.subplots(figsize=figsize)
+        x = np.array(self.netwink.scoresVector[:,None])
+        y = np.array((self.netwink.scoresVector @ self.computedMatrix).T)
+        if diffusionDiff:
+            y = y - x
+        ax.scatter(x, y)
+        if diffusionDiff and annotate:
+            annotdata = pd.Series(y.flatten(), index=self.netwink.get_nodes_series())
+            annotbool = (annotdata > annotdata.quantile(1-annotate)) | (annotdata < annotdata.quantile(annotate))
+            textBoxes = [
+                ax.text(self.netwink.scoresVector[i],annotdata[i], annotdata.index[i], ha='center', va='center')
+                #ax.annotate(annotdata.index[i],(self.netwink.scoresVector[i],annotdata[i]))
+                for i,a in enumerate(annotbool) if a
+            ]
+            from adjustText import adjustText #adjust_text needs to be last action on fig before visualization
+            adjustText.adjust_text(
+                textBoxes,x=self.netwink.scoresVector[annotbool],y=annotdata[annotbool],
+                ax=ax, arrowprops=dict(arrowstyle='->', color=arrowColor)
+            )
+        return ax if not returnDiff else (ax,y)
 
     def plot_geneset_scores(
             self, geneset, filename=None, cmap='Greens', vmin=None, vmax=None,

@@ -14,6 +14,7 @@ setup(name = package,
       python_requires='>3.6',
       install_requires = [
           'matplotlib',
+          'adjustText',
           'pillow',
           'pandas',
           'scipy',
